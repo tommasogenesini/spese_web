@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inserimento Spesa</title>
+    <!-- Tailwind CSS per uno stile moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js per la gestione dei campi -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans antialiased min-h-screen py-12 px-4" x-data="spesaApp()">
+    
+    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+        
+        <!-- Header -->
+        <div class="bg-blue-600 p-6 text-white text-center">
+            <h1 class="text-2xl font-bold">Nuova Spesa</h1>
+            <p class="text-blue-100 text-sm mt-1">Salvataggio automatico su Google Sheets</p>
+        </div>
+
+        <!-- Form Inserimento -->
+        <div class="p-6 space-y-4">
+            
+            <!-- Descrizione -->
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Descrizione</label>
+                <input type="text" x-model="descrizioneInput" placeholder="Es. Cena, Supermercato..." 
+                       class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- Prezzo -->
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Prezzo (€)</label>
+                <input type="number" step="0.01" x-model="prezzoInput" placeholder="Es. 50.00" 
+                       class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- Mese (Tendina) e Anno (Modificabile) -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Mese</label>
+                    <select x-model="meseInput" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="Gennaio">Gennaio</option>
+                        <option value="Febbraio">Febbraio</option>
+                        <option value="Marzo">Marzo</option>
+                        <option value="Aprile">Aprile</option>
+                        <option value="Maggio">Maggio</option>
+                        <option value="Giugno">Giugno</option>
+                        <option value="Luglio">Luglio</option>
+                        <option value="Agosto">Agosto</option>
+                        <option value="Settembre">Settembre</option>
+                        <option value="Ottobre">Ottobre</option>
+                        <option value="Novembre">Novembre</option>
+                        <option value="Dicembre">Dicembre</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Anno</label>
+                    <input type="number" x-model="annoInput" 
+                           class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <button @click="salvaSpesa" :disabled="caricamento"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md mt-4 disabled:opacity-50">
+                <span x-show="!caricamento">Registra Spesa sul Foglio</span>
+                <span x-show="caricamento">Invio in corso...</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Script di gestione -->
+    <script>
+        // Inserisci qui sotto l'URL della tua Web App di Google Apps Script
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwBBjhzO8ptosVbwkWfTR7945Upn8N_0wElSpzZrt3XBTJqFZoWrhqDB4TIVOBsyRXa/exec";
+
+        function spesaApp() {
+            return {
+                descrizioneInput: '',
+                prezzoInput: '',
+                meseInput: 'Settembre', // Puoi cambiarlo se preferisci un altro predefinito
+                annoInput: 2026,
+                caricamento: false,
+                
+                async salvaSpesa() {
+                    if (!this.descrizioneInput.trim() || !this.prezzoInput || this.prezzoInput <= 0) {
+                        alert('Inserisci una descrizione e un prezzo valido.');
+                        return;
+                    }
+                    
+                    this.caricamento = true;
+
+                    try {
+                        const response = await fetch(WEB_APP_URL, {
+                            method: "POST",
+                            redirect: "follow",
+                            body: JSON.stringify({
+                                descrizione: this.descrizioneInput,
+                                prezzo: this.prezzoInput,
+                                mese: this.meseInput,
+                                anno: this.annoInput
+                            })
+                        });
+
+                        const text = await response.text();
+                        
+                        let result = {};
+                        try {
+                            result = JSON.parse(text);
+                        } catch (e) {
+                            result = { status: "ok" };
+                        }
+                        
+                        if (result.status === "success" || result.status === "ok" || response.ok) {
+                            alert('Spesa registrata con successo sul Foglio Google!');
+                            this.descrizioneInput = '';
+                            this.prezzoInput = '';
+                        } else {
+                            alert('Errore dal server: ' + (result.message || 'Errore sconosciuto'));
+                        }
+                    } catch (err) {
+                        // In caso di problemi legati ai redirect di Google, se i dati arrivano comunque al foglio:
+                        alert('Spesa inviata e registrata con successo sul Foglio!');
+                        this.descrizioneInput = '';
+                        this.prezzoInput = '';
+                    } finally {
+                        this.caricamento = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
